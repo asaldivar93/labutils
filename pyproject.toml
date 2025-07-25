@@ -4,4 +4,12 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["numpy", "plotly", "polars", "lmfit", "xlsxwriter"]
+dependencies = [
+  "numpy",
+  "plotly"==5.24.1,
+  "polars",
+  "lmfit",
+  "xlsxwriter",
+  "fastexcel",
+  "kaleido"==0.2.1
+]
