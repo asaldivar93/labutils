@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import polars as pl
+from scipy.integrate import simpson
 
 
 def load_excel(file: str, columns: list[str] | None = None) -> pl.DataFrame:
@@ -30,7 +31,7 @@ def load_tecan(
     files: list[str],
     n_wells: float | None = None,
     col_letters: str | None = None,
-    keys_options: dict | None = None,
+    keys: bool = False,
 ) -> pl.DataFrame:
     """Read tecan excel file with multiple sheets.
 
@@ -43,15 +44,25 @@ def load_tecan(
         (default: 4)
     col_letters:
         The columns to read. (default: "A:AE")
-    keys_options:
-        (Optional) Keys mapping wells to sample id. A dict with keys skip_rows,
-        n_rows, use_columns
-
+    keys:
+        (Optional) Boolean to indicate if the sheet has keys to experimental
+        conditions (default: False)
     """
+
+    def integrate(data: dict) -> int:
+        x = [float(x) for x in data]
+        y = list(data.values())
+        return simpson(y, x=x)
+
     if n_wells is None:
         n_wells = 4
     if col_letters is None:
         col_letters = "A:AE"
+    if keys:
+        col_letters = "B:AF"
+        date_col = "C"
+    else:
+        date_col = "B"
 
     files_dict = {}
     for f in files:
@@ -71,18 +82,12 @@ def load_tecan(
         for k, v in df_dict.items():
             df_dict[k] = v.rename({"Wavel.": "well"})
 
-        # Add well to sample key if available
-        if keys_options:
-            keys_dict = pl.read_excel(f, sheet_id=0, read_options=keys_options)
-            for sheet, v in keys_dict.items():
-                df_dict[sheet] = df_dict[sheet].join(v, on="well")
-
         # Get the date for each measurment
         start_row = 27
         read_options = {
             "skip_rows": start_row,
             "n_rows": 1,
-            "use_columns": "B",
+            "use_columns": date_col,
         }
         dates = pl.read_excel(f, sheet_id=0, read_options=read_options)
         # Add date to absorbance values
@@ -91,10 +96,18 @@ def load_tecan(
                 pl.col("__UNNAMED__1").str.to_datetime("%m/%d/%Y %I:%M:%S %p"),
             )
             df_dict[sheet] = df_dict[sheet].with_columns(date = v[0, 0])
-
+        # Merge sheets into a single dataframe
         files_dict[f] = pl.concat(df_dict.values())
+    # Merge files into a single dataframe
     od_df = pl.concat(files_dict.values()).sort("date")
-    od_df = od_df.with_columns(time = pl.col("date") - od_df[0, -1])
+    # Get time in days
+    # Get integral of
+    cols = od_df.columns[1:-2]
+    od_df = od_df.with_columns(
+        time = pl.col("date") - od_df[0, -1],
+        area = pl.struct(cols).map_elements(integrate)
+    )
+
     return od_df.with_columns(time = pl.col("time").dt.total_seconds() / (3600 * 24))
 
 def get_od_df(file: str, wavelengths: list[str] | None) -> pl.DataFrame:

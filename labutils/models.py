@@ -57,9 +57,13 @@ def get_growth_rates(
 
     t = biomass_df["time"].to_numpy()
     fit_results = {}
-    for wv in wavelengths:
-        y = biomass_df[wv].to_numpy()
-        fit_results[wv] = fit_gompertz(t, y, A=x0[0], B=x0[1], C=x0[2], xmin=xmin)
+    if wavelengths == "area":
+        y = biomass_df["area"].to_numpy()
+        fit_results["area"] = fit_gompertz(t, y, A=x0[0], B=x0[1], C=x0[2], xmin=xmin)
+    else:
+        for wv in wavelengths:
+            y = biomass_df[wv].to_numpy()
+            fit_results[wv] = fit_gompertz(t, y, A=x0[0], B=x0[1], C=x0[2], xmin=xmin)
 
     if out_dir:
         fit_file = out_dir + "/best_fit.xlsx"
