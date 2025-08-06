@@ -82,7 +82,7 @@ def get_growth_rates(
             })
             bf_df.write_excel(
                 workbook,
-                f"{key}",
+                f"{key}.txt",
             )
         workbook.close()
 
