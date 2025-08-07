@@ -70,7 +70,7 @@ def get_growth_rates(
         workbook = xlsxwriter.Workbook(fit_file)
         for key, fit in fit_results.items():
             # Save report to txt
-            file_path = out_dir + f"/lmfit_{key}_report"
+            file_path = out_dir + f"/lmfit_{key}_report.txt"
             with Path(file_path).open("w") as file:
                 file.write(fit.fit_report())
 
@@ -82,7 +82,7 @@ def get_growth_rates(
             })
             bf_df.write_excel(
                 workbook,
-                f"{key}.txt",
+                f"{key}",
             )
         workbook.close()
 
